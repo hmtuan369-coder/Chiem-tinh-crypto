@@ -4,82 +4,99 @@ import datetime
 import pytz
 import pandas as pd
 import random
+import calendar
 
-# Cài đặt múi giờ
+# Cai dat mui gio
 tz = pytz.timezone('Asia/Ho_Chi_Minh')
 now = datetime.datetime.now(tz)
+current_year = now.year
+current_month = now.month
 
-st.set_page_config(page_title="Chiêm Tinh Crypto", page_icon="🌙", layout="centered")
-st.title("🔮 Bảng Điểm & Biểu Đồ Chiêm Tinh")
-st.write(f"**Cập nhật lúc:** {now.strftime('%d/%m/%Y - %H:%M')} (GMT+7)")
+st.set_page_config(page_title="Chiem Tinh Crypto", page_icon="🌙")
+st.title("🔮 Bang Diem & Bieu Do Chiem Tinh")
+st.write(f"**Cap nhat:** {now.strftime('%d/%m/%Y - %H:%M')}")
 
 st.divider()
 
-# 1. CẢNH BÁO CUỐI TUẦN
+# Quy tac cuoi tuan
 day_of_week = now.weekday()
 if day_of_week >= 5: 
-    st.warning("⚠️ **LƯU Ý:** Hôm nay là cuối tuần. Thanh khoản kém, giá thường khó chạy hoặc quét râu hai đầu. \n\n**Khuyến nghị:** Tranh thủ thời gian này dắt Bố đi dạo thay vì ngồi canh chart!")
+    st.warning("⚠️ HOM NAY LA CUOI TUAN: Thanh khoan kem, de quet rau hai dau. Nen dac biet chu y quan sat khoi luong (Volume) theo Wyckoff hoac dung ngoai!")
 else:
-    st.info("✅ Thị trường đang trong tuần, thanh khoản duy trì ở mức bình thường.")
+    st.info("✅ Thi truong dang trong tuan, thanh khoan binh thuong.")
 
-# 2. TÍNH ĐIỂM NĂNG LƯỢNG (VẠCH)
+# Tinh diem nang luong hom nay
 observer = ephem.Observer()
 observer.date = now.astimezone(pytz.utc)
+sun, moon = ephem.Sun(observer), ephem.Moon(observer)
+sep = abs(float(ephem.separation(sun, moon))) * (180 / ephem.pi)
 
-sun = ephem.Sun(observer)
-moon = ephem.Moon(observer)
+score = -5
+status = "🔴 1 VACH DO - Bien dong nhe, rut nhanh."
+if 85 <= sep <= 95 or 175 <= sep <= 185:
+    score, status = -10, "🔴 2 VACH DO - Rui ro cao, de kill Long/Short."
+elif 115 <= sep <= 125 or 55 <= sep <= 65:
+    score, status = 10, "🟢 VACH XANH - Thuan loi, du dia tang tot."
 
-separation = abs(float(ephem.separation(sun, moon))) * (180 / ephem.pi)
-
-score = 0
-status_text = ""
-
-if 85 <= separation <= 95 or 175 <= separation <= 185:
-    score = -10
-    status_text = "🔴 2 VẠCH ĐỎ (Rủi ro cao) - Dễ kill Long/Short."
-elif 115 <= separation <= 125 or 55 <= separation <= 65:
-    score = 10
-    status_text = "🟢 VẠCH XANH (Thuận lợi) - Dư địa tăng tốt."
-else:
-    score = -5
-    status_text = "🔴 1 VẠCH ĐỎ (Bất ổn nhẹ) - Đánh volume nhỏ, rút nhanh."
-
-st.subheader("📊 Năng Lượng Hôm Nay")
-st.metric(label="Chỉ số Vạch", value=f"{score} điểm")
-if score > 0:
-    st.success(status_text)
-else:
-    st.error(status_text)
+st.metric(label="Chi so Vach Hom Nay", value=f"{score} diem")
+st.write(status)
 
 st.divider()
 
-# 3. BIỂU ĐỒ SÓNG THEO GIỜ
-st.subheader("📈 Biểu Đồ Sóng Năng Lượng (24h)")
+# ---------------------------------------------------------
+# BIEU DO THEO THANG (KET QUA CHIEM TINH TUNG NGAY)
+# ---------------------------------------------------------
+st.subheader(f"📅 Du Bao Chiem Tinh (Thang {current_month})")
 
-# Tạo dữ liệu giả lập sóng khớp với khung giờ bạn quan sát
-hours = []
-wave_values = []
+days_in_month = calendar.monthrange(current_year, current_month)[1]
+days_list = []
+scores_list = []
+colors_list = []
 
-for h in range(24):
-    hours.append(f"{h:02d}:00")
-    # Sóng sáng: 4h - 12h (Đỉnh lúc 12h)
-    if 4 <= h <= 12:
-        wave = (h - 3) * 10
-    # Sóng tối: 18h - 21h (Đỉnh lúc 21h)
-    elif 18 <= h <= 21:
-        wave = (h - 17) * 25
-    # Giờ nhiễu/đi ngang
+for d in range(1, days_in_month + 1):
+    # Tinh toan nang luong cho tung ngay trong thang
+    test_date = datetime.datetime(current_year, current_month, d, 12, 0, tzinfo=tz)
+    obs_temp = ephem.Observer()
+    obs_temp.date = test_date.astimezone(pytz.utc)
+    s_temp, m_temp = ephem.Sun(obs_temp), ephem.Moon(obs_temp)
+    sep_temp = abs(float(ephem.separation(s_temp, m_temp))) * (180 / ephem.pi)
+    
+    # Cham diem giong he thong mau
+    if 85 <= sep_temp <= 95 or 175 <= sep_temp <= 185:
+        day_score = -10
+    elif 115 <= sep_temp <= 125 or 55 <= sep_temp <= 65:
+        day_score = 10
+    elif 45 <= sep_temp <= 54 or 135 <= sep_temp <= 145:
+        day_score = 5
     else:
-        wave = random.randint(5, 15)
-    wave_values.append(wave)
+        day_score = -5
+        
+    days_list.append(f"{d:02d}")
+    scores_list.append(day_score)
+    # Phan loai mau: Xanh blue cho diem duong, Do cho diem am
+    colors_list.append("#3b82f6" if day_score > 0 else "#ef4444") 
 
-# Vẽ biểu đồ
-df_wave = pd.DataFrame({
-    "Giờ": hours,
-    "Sóng": wave_values
-})
+# Tao bang du lieu
+df_month = pd.DataFrame({"Ngay": days_list, "KetQua": scores_list, "Color": colors_list})
 
-# Hiển thị biểu đồ dạng mảng (Area Chart) màu tím/xanh
-st.area_chart(df_wave.set_index("Giờ"), color="#8884d8")
+# Ve bieu do cot
+st.bar_chart(df_month, x="Ngay", y="KetQua", color="Color")
 
-st.caption("💡 Đỉnh sóng cao nhất rơi vào 12h00 trưa và 21h00 tối. Hãy kết hợp với vùng Cầu/Cung trên chart để tìm Entry.")
+st.divider()
+
+# ---------------------------------------------------------
+# BIEU DO SONG THEO GIO (TRONG NGAY)
+# ---------------------------------------------------------
+st.subheader("📈 Bieu Do Song Nang Luong (24h Hom Nay)")
+hours = [f"{h:02d}:00" for h in range(24)]
+waves = []
+for h in range(24):
+    if 4 <= h <= 12: wave = (h - 3) * 10
+    elif 18 <= h <= 21: wave = (h - 17) * 25
+    else: wave = random.randint(5, 15)
+    waves.append(wave)
+
+df_wave = pd.DataFrame({"Gio": hours, "Song": waves})
+st.area_chart(df_wave.set_index("Gio"), color="#8b5cf6")
+
+st.caption("💡 Chon ngay co vach xanh/thanh khoan cao de danh, tranh cac ngay 2 vach do hoac cuoi tuan.")
